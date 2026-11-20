@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bir Kalp</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #020607; }
+  body { font-family: Arial, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .hint {
+    position: fixed; left: 0; right: 0; bottom: 22px; text-align: center;
+    color: rgba(156,255,246,.42); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="hint">made with a little electricity</div>
+<script>
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+let w, h, dpr, points = [], sparks = [], tick = 0;
+
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  w = innerWidth; h = innerHeight;
+  canvas.width = Math.floor(w*dpr); canvas.height = Math.floor(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  makeHeart();
+}
+function heart(t) {
+  const x = 16*Math.pow(Math.sin(t),3);
+  const y = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+  return {x,y};
+}
+function makeHeart() {
+  points = [];
+  const scale = Math.min(w/39, h/31) * 0.78;
+  const cx = w/2, cy = h/2 + 4;
+  const count = 780;
+  for(let i=0;i<count;i++) {
+    const t = Math.random()*Math.PI*2;
+    const p = heart(t);
+    const fill = Math.sqrt(Math.random());
+    points.push({
+      x: cx + p.x*scale*fill, y: cy - p.y*scale*fill,
+      ox: cx + p.x*scale*fill, oy: cy - p.y*scale*fill,
+      phase: Math.random()*Math.PI*2, speed: .4+Math.random()*1.4,
+      size: .45+Math.random()*1.45, alpha: .18+Math.random()*.7
+    });
+  }
+}
+function draw() {
+  tick += 0.012;
+  ctx.fillStyle = 'rgba(1,5,7,0.20)';
+  ctx.fillRect(0,0,w,h);
+
+  const pulse = 1 + Math.sin(tick*2.2)*.025;
+  const scale = Math.min(w/39, h/31) * .78 * pulse;
+  const cx=w/2, cy=h/2+4;
+
+  // Faint electric rays behind the heart
+  ctx.save();
+  ctx.translate(cx,cy);
+  for(let i=0;i<90;i++) {
+    const a = i*Math.PI*2/90 + tick*.12;
+    const inner = 105 + Math.sin(tick*2+i)*10;
+    const outer = Math.min(w,h)*.48;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
+    ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);
+    ctx.strokeStyle = `rgba(63,244,225,${.012+Math.random()*.025})`;
+    ctx.lineWidth = .7; ctx.stroke();
+  }
+  ctx.restore();
+
+  // Fine, shifting electric threads
+  ctx.globalCompositeOperation = 'lighter';
+  for(let k=0;k<230;k++) {
+    const a = Math.random()*Math.PI*2;
+    const b = Math.random()*Math.PI*2;
+    const p1=heart(a), p2=heart(b);
+    const f1=Math.sqrt(Math.random()), f2=Math.sqrt(Math.random());
+    const x1=cx+p1.x*scale*f1, y1=cy-p1.y*scale*f1;
+    const x2=cx+p2.x*scale*f2, y2=cy-p2.y*scale*f2;
+    ctx.beginPath(); ctx.moveTo(x1,y1);
+    const bend=(Math.random()-.5)*13;
+    ctx.quadraticCurveTo((x1+x2)/2+bend,(y1+y2)/2-bend,x2,y2);
+    ctx.strokeStyle=`rgba(68,255,231,${.025+Math.random()*.10})`;
+    ctx.lineWidth=.35+Math.random()*.65; ctx.stroke();
+  }
+
+  // Particle heart
+  for(const p of points) {
+    const wobble = Math.sin(tick*p.speed+p.phase)*1.8;
+    const x=cx+(p.ox-cx)*pulse + Math.cos(p.phase+tick)*wobble;
+    const y=cy+(p.oy-cy)*pulse + Math.sin(p.phase+tick*.8)*wobble;
+    ctx.beginPath(); ctx.arc(x,y,p.size,0,Math.PI*2);
+    ctx.fillStyle=`rgba(91,255,235,${p.alpha})`; ctx.fill();
+  }
+
+  // Bright outer heart outline
+  ctx.beginPath();
+  for(let i=0;i<=500;i++) {
+    const p=heart(i/500*Math.PI*2);
+    const x=cx+p.x*scale, y=cy-p.y*scale;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.shadowBlur=22; ctx.shadowColor='#35ffe6';
+  ctx.strokeStyle='rgba(106,255,239,.72)'; ctx.lineWidth=1.25; ctx.stroke();
+  ctx.shadowBlur=0;
+
+  // Glowing core around the outline
+  ctx.beginPath();
+  ctx.arc(cx,cy,3+Math.sin(tick*3)*1.2,0,Math.PI*2);
+  ctx.fillStyle='rgba(166,255,247,.75)'; ctx.shadowBlur=24; ctx.shadowColor='#4ffff0'; ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalCompositeOperation='source-over';
+  requestAnimationFrame(draw);
+}
+addEventListener('resize',resize);
+resize();
+draw();
+</script>
+</body>
+</html>
